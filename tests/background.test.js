@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+test('不再提供详情及粉丝网络查询',async()=>{let listener;globalThis.chrome={runtime:{id:'test',onMessage:{addListener:fn=>listener=fn}},action:{onClicked:{addListener(){}}}};await import('../extension/background.js');for(const type of ['video','followers']) {const result=await new Promise(resolve=>listener({type,bvid:'BV1xx411c7mD',mid:123},{id:'test'},resolve));assert.equal(result.ok,false);}delete globalThis.chrome;});

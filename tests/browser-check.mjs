@@ -1,0 +1,72 @@
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';import fs from 'node:fs/promises';import os from 'node:os';import assert from 'node:assert/strict';
+const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_PACKAGE||'playwright');
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../extension');const profile=await fs.mkdtemp(path.join(os.tmpdir(),'bili-main-'));
+const context=await chromium.launchPersistentContext(profile,{headless:true,channel:'chromium',executablePath:process.env.CHROMIUM_EXECUTABLE,args:[`--disable-extensions-except=${root}`,`--load-extension=${root}`]});
+const errors=[];
+try {
+ const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');const id=new URL(worker.url()).host;
+ const initial=[{bvid:'BV0000000001',stat:{view:1000,like:10}},{bvid:'BV0000000002',stat:{view:1000,like:100}},{bvid:'BV0000000003',stat:{view:100000,like:100}}];
+ await context.addInitScript(items=>{document.addEventListener('DOMContentLoaded',()=>{if(!document.getElementById('app'))return;document.getElementById('app').__vue_app__={config:{globalProperties:{$pinia:{_s:new Map([['feed',{data:{recommend:{item:items}},getPsParams:()=>({ps:12})}]])}}}};});},initial);
+ const card=(item,index)=>`<div class="bili-feed-card" id="v${index}"><div class="bili-video-card"><a href="https://www.bilibili.com/video/${item.bvid}"><h3>视频 ${index}</h3></a><div class="bili-video-card__info--bottom"><a href="https://space.bilibili.com/123">测试 UP</a></div></div></div>`;
+ await context.route('https://www.bilibili.com/**',r=>r.fulfill({contentType:'text/html; charset=utf-8',body:`<div id="app"><main style="display:grid;grid-template-columns:repeat(4,220px);gap:20px">${initial.map(card).join('')}<div class="feed-card" id="ad"><a href="https://www.bilibili.com/blackboard/ad">推广</a><span>广告</span></div><div class="bili-live-card" id="live"><a href="https://live.bilibili.com/1">直播</a></div><div class="bili-feed-card" id="mini-ad"><div class="bili-video-card"><i><b>广告</b></i><h3>小游戏</h3><span>去小程序</span></div></div><div class="bili-feed-card" id="special"><div class="floor-single-card"><div class="floor-skeleton">特殊占位</div></div></div><div class="bili-feed-card" id="empty-slot"><!----></div><div id="normal-skeleton" class="bili-video-card__skeleton" style="grid-column:4;height:100px"></div><div class="load-more-anchor" style="height:100px"><div class="floor-single-card"><div class="floor-skeleton"></div></div></div><div class="bili-video-card" id="after-anchor"><div class="bili-video-card__skeleton" style="height:100px"></div></div></main><aside class="palette-button-inner"><div class="palette-button-wrap"></div></aside></div>`}));
+ let requests=0,fail=false;
+ await context.route('https://api.bilibili.com/**',r=>{const u=new URL(r.request().url());assert.equal(u.searchParams.get('ps'),'12');requests++;return r.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(fail?{code:-400}:{code:0,data:{item:Array.from({length:12},(_,i)=>({bvid:`BV${String(requests*12+i+100).padStart(10,'0')}`,stat:{view:100000,like:10000}}))}})});});
+ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto('https://www.bilibili.com/');
+ // This suite models user-initiated batches; opening viewport fill has its own suite.
+ await page.evaluate(()=>{document.body.style.minHeight='3000px';scrollTo(0,1);dispatchEvent(new Event('scroll'));scrollTo(0,0);});
+ await page.waitForFunction(()=>document.getElementById('v0').classList.contains('bf-hidden'));
+ assert.equal(await page.locator('#v1').isVisible(),true);assert.equal(await page.locator('#ad').isVisible(),false);assert.equal(await page.locator('#live').isVisible(),false);
+ assert.equal(await page.locator('#v1 .bf-rate-tag').textContent(),'点赞率 10.00%');
+ await page.evaluate(()=>{const t=document.querySelector('#v1 .bili-video-card__info--bottom');for(const text of ['已关注','1万点赞']){const n=document.createElement('div');n.className='bili-video-card__info--icon-text';n.textContent=text;t.insertBefore(n,t.querySelector('a'));}});
+ await page.waitForFunction(()=>{const t=document.querySelector('#v1 .bili-video-card__info--bottom');return [...t.children].map(n=>n.textContent).join('|')==='已关注|1万点赞|点赞率 10.00%|测试 UP';});
+ await page.evaluate(()=>{const d=document.querySelector('.palette-button-wrap');d.insertAdjacentHTML('afterbegin','<div class="watchlater-pip-button">常驻</div><div class="refresh hidden" style="visibility:hidden;height:40px">刷新</div>');});
+ await page.waitForFunction(()=>document.querySelector('.watchlater-pip-button').nextElementSibling?.id==='bilibili-filter-toolbar');
+ assert.equal(await page.locator('#mini-ad').isVisible(),false);assert.equal(await page.locator('#special').isVisible(),false);
+ await page.evaluate(()=>document.querySelector('#special').innerHTML='<div class="bili-video-card"><a href="https://www.bilibili.com/video/BV9999999999">普通视频</a></div>');await page.waitForTimeout(600);assert.equal(await page.locator('#special').isVisible(),true);
+ assert.equal(await page.locator('#empty-slot').isVisible(),false);assert.equal(await page.locator('#normal-skeleton').isVisible(),true);assert.equal(await page.locator('#normal-skeleton').evaluate(e=>getComputedStyle(e).gridColumnStart),'auto');
+ await page.evaluate(()=>document.querySelector('#empty-slot').innerHTML='<a href="https://www.bilibili.com/video/BV9999999998">新内容</a>');await page.waitForTimeout(600);assert.equal(await page.locator('#empty-slot').isVisible(),true);
+ assert.equal(await page.locator('.load-more-anchor').evaluate(e=>getComputedStyle(e).position),'absolute');
+ const gap=await page.evaluate(()=>{const a=document.querySelector('#normal-skeleton').getBoundingClientRect(),b=document.querySelector('#after-anchor').getBoundingClientRect();return Math.abs(a.top-b.top)<1 ? Math.abs(b.left-a.right-20) : Math.abs(b.left-document.querySelector('main').getBoundingClientRect().left);});assert.ok(gap<1,'loading anchor must not consume a grid slot');
+ await page.evaluate(()=>document.querySelector('.load-more-anchor .floor-single-card').innerHTML='<a href="https://www.bilibili.com/video/BV9999999997">已加载内容</a>');await page.waitForFunction(()=>!document.querySelector('.load-more-anchor').classList.contains('bf-load-sentinel'));
+ await page.evaluate(()=>document.querySelector('.load-more-anchor .floor-single-card').innerHTML='<div class="floor-skeleton"></div>');await page.waitForFunction(()=>document.querySelector('.load-more-anchor').classList.contains('bf-load-sentinel'));
+ const options=await context.newPage();options.on('pageerror',e=>errors.push(e.message));await options.goto(`chrome-extension://${id}/options.html`);
+ assert.equal(await options.locator('input[name="enabled"],input[name="preview"]').count(),0);
+ const save=async()=>{await options.getByRole('button',{name:'保存设置',exact:true}).click();await options.waitForFunction(()=>document.getElementById('save').disabled);};
+ await options.locator('input[name="combined-minViews"]').fill('7000');await options.locator('input[name="combined-likeRate"]').fill('4');await options.locator('input[name="likes-likeRate"]').fill('2');await options.locator('input[name="views-minViews"]').fill('500');
+ await options.locator('input[name="rule-likes"]').check();await options.locator('input[name="rule-views"]').check();await options.getByRole('button',{name:'低播放量过滤上移',exact:true}).click();await save();
+ const settings=(await worker.evaluate(()=>chrome.storage.local.get('settings'))).settings;
+ assert.equal(settings.rules.find(r=>r.id==='combined').minViews,7000);assert.equal(settings.rules.find(r=>r.id==='likes').likeRate,2);assert.equal(settings.rules.find(r=>r.id==='views').minViews,500);
+ await page.waitForFunction(()=>document.getElementById('v2').classList.contains('bf-hidden'));
+ assert.equal(await page.locator('#v1').isVisible(),true);
+ await options.reload();await options.locator('input[name="combined-minViews"]').waitFor();assert.equal(await options.locator('input[name="combined-minViews"]').inputValue(),'7000');
+ for(const selector of ['h2:has(.help)','.batch-row>label']) {
+  const differences=await options.locator(selector).evaluateAll(es=>es.map(e=>{const a=e.querySelector('span').getBoundingClientRect(),b=e.querySelector('.help').getBoundingClientRect();return Math.abs(a.y+a.height/2-b.y-b.height/2);}));
+  assert.ok(differences.every(d=>d<1),'shared text/help centers');
+ }
+ const settingsWidth=await options.locator('.workspace-content').evaluate(e=>e.getBoundingClientRect().width);
+ await options.locator('#records-tab').click();assert.equal(await options.locator('.workspace-content').evaluate(e=>e.getBoundingClientRect().width),settingsWidth);await options.locator('.record').filter({hasText:'视频 0'}).getByRole('button',{name:'恢复这一条'}).click();await page.waitForFunction(()=>!document.getElementById('v0').classList.contains('bf-hidden'));
+ await options.locator('#records-tab').click();await options.locator('.record').filter({hasText:'视频 2'}).getByRole('button',{name:'加入 UP 白名单'}).click();await options.locator('#whitelist-tab').click();await options.getByRole('link',{name:'测试 UP · UID 123'}).waitFor();await options.getByRole('button',{name:'移除',exact:true}).click();await options.getByText('暂无 UP 白名单，可从过滤记录中加入。').waitFor();
+ await options.locator('#settings-tab').click();await options.getByLabel('第 3 档颜色').selectOption('purple');await save();await page.waitForFunction(()=>document.querySelector('#v1 .bf-rate-tag').dataset.color==='purple');
+ await options.locator('#load-batch').selectOption('48');await save();
+ await options.evaluate(()=>window.scrollTo(0,0));await options.waitForTimeout(5100);assert.equal(await options.getByLabel('第 3 档颜色').locator('option').count(),12);const centers=await options.locator('.band-row').first().evaluate(e=>[e.querySelector('input'),e.querySelector('select'),e.querySelector('.band-preview'),e.querySelector('button')].map(n=>{const r=n.getBoundingClientRect();return r.top+r.height/2;}));assert.ok(Math.max(...centers)-Math.min(...centers)<1);await options.screenshot({path:path.join(root,'../artifacts/settings-preview.png'),fullPage:true});
+ // Native loader imitation: only responds when its sentinel is in view.
+ await page.evaluate(()=>{window.loaded=0;window.loading=false;window.failed=false;window.nativeLoad=async()=>{if(window.loading)return;window.loading=true;try{const data=await (await fetch('https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?fresh_type=4&ps=12')).json();if(data.code!==0){window.failed=true;return;}for(const item of data.data.item){const n=document.createElement('div');n.className='bili-feed-card';n.innerHTML=`<div class="bili-video-card"><a href="https://www.bilibili.com/video/${item.bvid}">新视频</a><div class="bili-video-card__info--bottom"></div></div>`;document.querySelector('main').insertBefore(n,document.querySelector('.load-more-anchor'));}window.loaded+=data.data.item.length;}finally{window.loading=false;}};window.addEventListener('scroll',()=>{if(document.querySelector('.load-more-anchor').getBoundingClientRect().bottom<innerHeight)void window.nativeLoad();});});
+ await page.evaluate(()=>{window.testLoad=window.nativeLoad();void window.testLoad;});await page.waitForFunction(()=>window.loaded===48);assert.equal(requests,4);
+ await page.evaluate(()=>{window.testLoad=window.nativeLoad();void window.testLoad;});await page.waitForFunction(()=>window.loaded===96);assert.equal(requests,8);
+ await page.waitForFunction(()=>document.querySelector('.load-more-anchor').getAttribute('style')==='height:100px');
+ fail=true;await page.evaluate(()=>{window.testLoad=window.nativeLoad();void window.testLoad;});await page.waitForFunction(()=>window.failed);const failedCount=requests;await page.waitForTimeout(1200);assert.equal(requests,failedCount);assert.equal(await page.evaluate(()=>window.loading),false);
+ await options.locator('#load-batch').selectOption('0');await save();fail=false;await page.evaluate(()=>{window.testLoad=window.nativeLoad();void window.testLoad;});await page.waitForFunction(()=>window.loaded===108);await page.waitForTimeout(1200);assert.equal(requests,10);
+ assert.equal(await page.locator('.bf-rate-tag').count(),113);assert.equal(await page.locator('.bf-controls,.bf-marked').count(),0);
+ await options.evaluate(()=>chrome.runtime.sendMessage({type:'clear'}));await worker.evaluate(()=>chrome.storage.local.set({records:Array.from({length:25},(_,i)=>({id:String(i),kind:'video',title:`记录 ${i}`,at:Date.now(),reason:'测试'}))}));
+ await options.locator('#records-tab').click();await options.waitForFunction(()=>document.querySelectorAll('.record').length===12);await options.getByRole('button',{name:'第 3 页',exact:true}).click();await options.waitForFunction(()=>document.querySelectorAll('.record').length===1);await options.getByRole('button',{name:'第 1 页',exact:true}).click();await options.screenshot({path:path.join(root,'../artifacts/records-preview.png'),fullPage:true});
+ await worker.evaluate(()=>{setTimeout(()=>chrome.runtime.reload(),100);});
+ await page.waitForFunction(()=>!document.querySelector('#bilibili-filter-toolbar'),null,{timeout:20000});
+ assert.equal(await page.locator('.bf-hidden').count(),0);
+ assert.deepEqual(errors,[]);console.log('PASS: settings save/reload, independent ordered rules, filtering, rate tags, restore, 48-item batches twice, error stop, native mode, pagination; no page errors');
+}finally{await context.close();await fs.rm(profile,{recursive:true,force:true});}
+
+
+
+

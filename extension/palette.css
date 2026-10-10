@@ -1,0 +1,12 @@
+:is(.bf-rate-tag,.band-preview)[data-color=orange]{color:#ad4e00;background:#fff7e6}
+:is(.bf-rate-tag,.band-preview)[data-color=gold]{color:#874d00;background:#fffbe6}
+:is(.bf-rate-tag,.band-preview)[data-color=lime]{color:#5b7000;background:#fcffe6}
+:is(.bf-rate-tag,.band-preview)[data-color=green]{color:#237804;background:#f6ffed}
+:is(.bf-rate-tag,.band-preview)[data-color=cyan]{color:#006d75;background:#e6fffb}
+:is(.bf-rate-tag,.band-preview)[data-color=blue]{color:#0958d9;background:#e6f4ff}
+:is(.bf-rate-tag,.band-preview)[data-color=indigo]{color:#1d39c4;background:#f0f5ff}
+:is(.bf-rate-tag,.band-preview)[data-color=purple]{color:#531dab;background:#f9f0ff}
+:is(.bf-rate-tag,.band-preview)[data-color=pink]{color:#c41d7f;background:#fff0f6}
+:is(.bf-rate-tag,.band-preview)[data-color=red]{color:#a8071a;background:#fff1f0}
+:is(.bf-rate-tag,.band-preview)[data-color=volcano]{color:#ad2102;background:#fff2e8}
+:is(.bf-rate-tag,.band-preview)[data-color=gray]{color:#595959;background:#fafafa}

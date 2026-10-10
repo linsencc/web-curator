@@ -1,0 +1,14 @@
+.bf-hidden { display: none !important; }
+.bf-pending { animation:bf-reveal .5s step-end forwards; }
+@keyframes bf-reveal { from { visibility:hidden; } to { visibility:visible; } }
+.bf-compacted { grid-auto-flow: row dense !important; }
+.bf-compacted > :is(.feed-card, .bili-feed-card):not(.bf-hidden) { grid-area: auto !important; margin-block:0 !important; align-self:start !important; }
+.bf-compacted > :is(.bili-video-card, .bili-live-card, .bili-video-card__skeleton, .floor-single-card, .bili-special-card, .load-more-anchor) { grid-area:auto !important; margin-block:0 !important; align-self:start !important; }
+
+
+.bf-rate-tag{display:inline-flex;align-items:center;flex-shrink:0;vertical-align:middle;font-family:inherit;font-size:12px;line-height:16px;color:var(--brand_orange,#ff7f24);background:var(--brand_orange_thin,#fff0e5);border-radius:2px;padding:0 2px;margin-right:4px;white-space:nowrap}
+
+
+
+.bf-anchor-container{position:relative!important}
+.bf-anchor-container > .bf-load-sentinel{position:absolute!important;inset:auto 0 0 auto!important;width:1px!important;height:1px!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;pointer-events:none!important}

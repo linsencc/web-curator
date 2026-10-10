@@ -1,0 +1,37 @@
+import {createRequire} from 'node:module';import {fileURLToPath} from 'node:url';import path from 'node:path';import assert from 'node:assert/strict';
+const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_PACKAGE||'playwright');const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../extension');
+const context=await chromium.launchPersistentContext('',{headless:true,viewport:{width:1471,height:1244},executablePath:process.env.CHROMIUM_EXECUTABLE,args:[`--disable-extensions-except=${root}`,`--load-extension=${root}`]});
+try{
+ const w=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker'),id=new URL(w.url()).host;
+ const p=await context.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ const item=(name,all=false)=>`<div class="bili-dyn-up-list__item"><div class="bili-dyn-up-list__item__face ${all?'all':''}"></div><div class="bili-dyn-up-list__item__name">${name}</div></div>`;
+ await p.route('https://t.bilibili.com/**',r=>r.fulfill({contentType:'text/html; charset=utf-8',body:`<style>:root{--bg1:#fff;--bg2:#f1f2f3;--brand_blue:#00aeec}body{margin:0;background:#d4e8e8;font:14px Microsoft YaHei;color:#18191c}header{height:64px;background:white;margin-bottom:12px;display:flex;align-items:center;padding-left:32px}.bili-dyn-home--member{display:flex;justify-content:center}aside.left{width:230px;margin-right:12px}aside.right{width:280px}main{width:640px;margin-right:12px}section,.bili-dyn-live-users,.bili-dyn-banner,.bili-dyn-search-trendings{background:white;padding:16px;border-radius:6px;margin-bottom:8px;box-sizing:border-box}.bili-dyn-up-list{display:flex;background:white}.bili-dyn-up-list__window{overflow:auto hidden;flex:1}.bili-dyn-up-list__content{display:flex;transform:translateX(-10px)}.bili-dyn-up-list__item{display:flex;flex-direction:column;align-items:center;width:68px;height:100px;flex-shrink:0;margin-right:6px;cursor:pointer}.bili-dyn-up-list__item__face{border-radius:50%;width:48px;height:48px;background:#d5ebf4;margin:8px}.bili-dyn-up-list__item__name{font-size:12px;text-align:center}.post{height:190px}input,button{font:inherit}</style><header>bilibili　 动态</header><div id="app"><div class="bili-dyn-home--member"><aside class="left"><section>个人资料<br><br>333 关注　11 动态</section><div class="bili-dyn-live-users">正在直播</div></aside><main><section><div class="bili-dyn-publishing">有什么想和大家分享的？<br><br><textarea aria-label="发布动态"></textarea></div></section><section><div class="bili-dyn-up-list"><div class="bili-dyn-up-list__nav">前后</div><div class="bili-dyn-up-list__window"><div class="bili-dyn-up-list__content">${item('全部动态',true)}${Array.from({length:40},(_,i)=>item('测试 UP '+i)).join('')}</div></div></div></section><section><div class="bili-dyn-list-tabs">全部　视频投稿　追番追剧　专栏</div></section><section class="post"><div class="bili-dyn-list"><div class="bili-dyn-list__item"><div class="bili-dyn-item" style="box-sizing:border-box;background:white;padding:24px;min-height:170px">关注的 UP · 新动态<br><br>视频和动态内容保留原有交互</div></div></div></section></main><aside class="right"><div class="bili-dyn-banner">横幅</div><div class="bili-dyn-search-trendings">热搜</div></aside></div></div>`}));
+ await p.goto('https://t.bilibili.com/');await p.waitForTimeout(500);assert.equal(await p.locator('html').evaluate(e=>e.classList.contains('bf-dynamic')),false);
+ await p.evaluate(()=>document.querySelector('.bili-dyn-up-list__content').addEventListener('click',e=>{window.selected=e.target.closest('.bili-dyn-up-list__item')?.textContent;}));
+ const options=await context.newPage();await options.goto(`chrome-extension://${id}/options.html`);await options.locator('[name=dynamicOptimize]').check();await options.locator('#save').click();await p.waitForFunction(()=>document.documentElement.classList.contains('bf-dynamic'));
+ for(const cls of ['.bili-dyn-publishing','.bili-dyn-live-users','.bili-dyn-banner','.bili-dyn-search-trendings'])assert.equal(await p.locator(cls).isVisible(),false);
+ assert.ok(await p.locator('main').evaluate(e=>e.clientWidth)>640);
+
+ assert.equal(await p.locator('aside.left').isVisible(),false);
+ assert.equal(await p.locator('.bf-up-heading').textContent(),'关注动态');
+ const geometry=await p.evaluate(()=>({up:document.querySelector('.bili-dyn-up-list').getBoundingClientRect().toJSON(),post:document.querySelector('.post').getBoundingClientRect().toJSON()}));
+ assert.ok(geometry.up.right<geometry.post.left,'UP rail is beside feed');
+ await p.getByText('测试 UP 39',{exact:true}).click();assert.equal(await p.evaluate(()=>window.selected),'测试 UP 39');
+ const listScroll=await p.locator('.bili-dyn-up-list__window').evaluate(e=>e.scrollTop);assert.ok(listScroll>0);
+ await p.evaluate(()=>document.querySelector('.bili-dyn-up-list__content').insertAdjacentHTML('beforeend','<div class="bili-dyn-up-list__item"><div class="bili-dyn-up-list__item__name">新 UP</div></div>'));
+ await p.waitForTimeout(100);assert.equal(await p.locator('.bili-dyn-up-list__window').evaluate(e=>e.scrollTop),listScroll);
+ await p.evaluate(()=>{const post=document.querySelector('.post');for(let i=0;i<10;i++)post.parentElement.append(post.cloneNode(true));scrollTo(0,300);});await p.waitForTimeout(100);
+ assert.equal(Math.round((await p.locator('.bili-dyn-up-list').boundingBox()).y),76);
+ assert.equal(Math.round((await p.locator('section:has(>.bili-dyn-list-tabs)').boundingBox()).y),76);
+ await p.evaluate(()=>{scrollTo(0,0);document.querySelector('.bili-dyn-up-list__window').scrollTop=0;});
+ assert.equal(await p.locator('.bili-dyn-item').first().evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
+ assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await p.screenshot({path:path.join(root,'../artifacts/dynamic-preview.png')});
+ await options.reload();assert.equal(await options.locator('[name=dynamicOptimize]').isChecked(),true);
+ await options.locator('[name=dynamicOptimize]').uncheck();await options.locator('#save').click();await p.waitForFunction(()=>!document.documentElement.classList.contains('bf-dynamic'));assert.equal(await p.locator('.bf-up-heading').count(),0);assert.equal(await p.locator('.bili-dyn-live-users').isVisible(),true);assert.equal(await p.locator('main').evaluate(e=>e.clientWidth),640);assert.equal(await p.locator('.bili-dyn-up-list').evaluate(e=>getComputedStyle(e).position),'static');assert.equal(await p.locator('.bili-dyn-publishing').isVisible(),true);assert.equal(await p.locator('aside.left').isVisible(),true);assert.equal(await p.locator('.bf-up-expanded,.bf-up-searching').count(),0);
+ await options.locator('[name=dynamicOptimize]').check();await options.locator('#save').click();await p.waitForFunction(()=>document.documentElement.classList.contains('bf-dynamic'));
+ await w.evaluate(()=>{setTimeout(()=>chrome.runtime.reload(),100);});await p.waitForFunction(()=>!document.documentElement.classList.contains('bf-dynamic'),null,{timeout:10000});assert.equal(await p.locator('.bf-up-tools').count(),0);assert.deepEqual(errors,[]);
+ console.log('PASS dynamic switch/save/reload, sidebar layout/independent scroll/sticky filters/native clicks/late updates, disable restores layout, extension reload cleans invalidated context');
+}finally{await context.close();}
+
+

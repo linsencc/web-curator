@@ -1,0 +1,96 @@
+{
+  "manifest_version": 3,
+  "name": "首页清选 · Bilibili",
+  "version": "0.16.1",
+  "description": "过滤首页广告、直播，并用互动表现保留小众视频。规则、记录仅保存在本机。",
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "首页清选 · 设置与过滤记录",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.bilibili.com/*"
+      ],
+      "js": [
+        "feed-bridge.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.bilibili.com/*"
+      ],
+      "js": [
+        "bootstrap.js"
+      ],
+      "css": [
+        "content.css",
+        "palette.css"
+      ]
+    },
+    {
+      "matches": [
+        "https://t.bilibili.com/*"
+      ],
+      "js": [
+        "dynamic-bootstrap.js"
+      ],
+      "css": [
+        "dynamic.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content.js",
+        "core.js",
+        "settings.js",
+        "cards.js",
+        "feed-store.js",
+        "rate-tag.js",
+        "toolbar.js",
+        "layout.js",
+        "messaging.js",
+        "palette.js"
+      ],
+      "matches": [
+        "https://www.bilibili.com/*"
+      ]
+    },
+    {
+      "resources": [
+        "dynamic.js",
+        "settings.js",
+        "palette.js",
+        "messaging.js"
+      ],
+      "matches": [
+        "https://t.bilibili.com/*"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}
+

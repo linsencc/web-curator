@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>首页清选</title><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="palette.css"></head>
+<body><main class="workspace">
+<aside class="sidebar"><div class="brand"><div><strong>首页清选</strong></div></div><nav><button id="settings-tab" aria-pressed="true"><span>筛选规则</span><span>01</span></button><button id="records-tab" aria-pressed="false"><span>过滤记录</span><span>02</span></button><button id="whitelist-tab" aria-pressed="false"><span>UP 白名单</span><span>03</span></button></nav></aside>
+<div class="workspace-content"><header><div><h1>筛选规则</h1></div><div class="header-actions"><span id="save-state" role="status">已保存</span><button id="revert" type="button" disabled>撤销修改</button><button class="primary" type="submit" form="settings-form" id="save" disabled>保存设置</button></div></header>
+<div id="status" role="status" aria-live="polite"></div>
+<section id="settings-panel"><form id="settings-form">
+<article><div class="section-heading" style="margin-bottom:0"><h2><span>动态页面优化</span><button type="button" class="help" aria-label="动态页面优化说明" data-help="隐藏动态首页的个人资料、发布框、直播列表、右侧横幅和热搜；左侧 UP 导航独立滚动，右侧单列动态，分类栏吸顶。关闭后恢复原布局。">?</button></h2><label class="inline-toggle"><input type="checkbox" name="dynamicOptimize"><span>启用优化</span></label></div></article><article class="batch-row"><label for="load-batch"><span>每次向下加载</span><button type="button" class="help" aria-label="加载数量说明" data-help="一次下拉按 B 站原生批次连续加载，达到目标数量后结束。不修改单次请求大小，实际数量可能略多或因过滤更少。遇到失败停止追加，保留已加载内容。">?</button></label><select id="load-batch" name="loadBatch"><option value="0">跟随 B 站</option><option value="12">12 条</option><option value="24">24 条</option><option value="36">36 条</option><option value="48">48 条</option><option value="60">60 条</option></select><span id="batch-status" role="status"></span></article>
+<article><div class="section-heading"><div><h2><span>不想看到的内容</span><button type="button" class="help" aria-label="类型说明" data-help="按推荐卡片类型或角标识别，包含番剧、国创、漫画和综艺。不按普通视频标题中的题材词过滤。隐藏整个卡片占位；不自动向服务器请求补充推荐。">?</button></h2></div><span class="pill">独立开关</span></div><div id="categories" class="category-grid"></div></article>
+<article><div class="section-heading"><div><h2><span>视频质量筛选</span><button type="button" class="help" aria-label="互动率说明" data-help="每条规则独立设置阈值，从上往下执行。组合规则要求播放量和点赞率同时低于阈值；其余规则只检查对应指标。命中即过滤，未命中继续，全部未命中则保留。">?</button></h2></div><label class="inline-toggle"><input type="checkbox" name="quality"><span>启用检查</span></label></div>
+<div class="rule-head" aria-hidden="true"><span>顺序</span><span>筛选条件</span><div class="rule-columns"><span>播放量低于</span><span>点赞率低于（%）</span></div><span class="sort-heading">调整顺序</span></div><div id="quality-rules"></div></article>
+
+
+<article><div class="section-heading"><h2><span>点赞率标签</span><button class="help" type="button" data-help="达到下限时使用对应颜色；命中多档时使用最高档。仅改变标签样式，不影响筛选。" aria-label="标签分档说明">?</button></h2><button type="button" id="add-band">添加分档</button></div><div class="band-head" aria-hidden="true"><span>点赞率下限（%）</span><span>标签颜色</span><span>效果预览</span><span></span></div><div id="rate-bands"></div></article></form></section>
+<section id="records-panel" hidden><article><div class="record-tools"><label>内容类型<select id="kind"><option value="all">全部类型</option></select></label><label>搜索记录<input id="search" placeholder="搜索标题或 UP 主"></label><button id="clear" type="button">清空记录</button></div><div id="records-count" aria-live="polite"></div><div id="records"></div><nav id="pagination" aria-label="记录分页"></nav></article></section>
+<section id="whitelist-panel" hidden><article><h2>UP 白名单</h2><div id="whitelist-list"></div></article></section></div></main><div id="tooltip" role="tooltip" hidden></div><script src="options.js" type="module"></script></body></html>
+
+
+
+
+
+
+
+
+
