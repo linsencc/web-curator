@@ -88,5 +88,3 @@ onInvalidated(()=>{
 });
 publishSettings();
 scan();
-
-

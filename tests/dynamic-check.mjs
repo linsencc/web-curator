@@ -33,5 +33,3 @@ try{
  await w.evaluate(()=>{setTimeout(()=>chrome.runtime.reload(),100);});await p.waitForFunction(()=>!document.documentElement.classList.contains('bf-dynamic'),null,{timeout:10000});assert.equal(await p.locator('.bf-up-tools').count(),0);assert.deepEqual(errors,[]);
  console.log('PASS dynamic switch/save/reload, sidebar layout/independent scroll/sticky filters/native clicks/late updates, disable restores layout, extension reload cleans invalidated context');
 }finally{await context.close();}
-
-

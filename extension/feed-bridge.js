@@ -132,5 +132,3 @@
   const installTimer=setInterval(()=>{install();fillOpeningViewport();},1000);
   install();
 })();
-
-

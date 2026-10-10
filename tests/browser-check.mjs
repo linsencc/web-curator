@@ -66,7 +66,3 @@ try {
  assert.equal(await page.locator('.bf-hidden').count(),0);
  assert.deepEqual(errors,[]);console.log('PASS: settings save/reload, independent ordered rules, filtering, rate tags, restore, 48-item batches twice, error stop, native mode, pagination; no page errors');
 }finally{await context.close();await fs.rm(profile,{recursive:true,force:true});}
-
-
-
-

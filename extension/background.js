@@ -30,4 +30,3 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
-

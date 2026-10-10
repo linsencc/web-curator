@@ -40,4 +40,3 @@ export function readCard(node) {
   const view = kind === 'video' ? parseCount(node.querySelector('.bili-video-card__stats--left .bili-video-card__stats--text')?.textContent) : undefined;
   return {id:kind === 'video' ? bvid : `${kind}:${identity}`,kind,bvid,url,title:title.slice(0,200),stats:Number.isFinite(view) ? {view} : undefined,viewSource:Number.isFinite(view) ? 'cover' : undefined,mid:owner?.href.match(/\.com\/(\d+)/)?.[1],author:owner?.textContent?.trim() || '',image:node.querySelector('img')?.currentSrc || node.querySelector('img')?.src || ''};
 }
-

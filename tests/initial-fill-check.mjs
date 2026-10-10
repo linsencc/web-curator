@@ -30,4 +30,3 @@ try {
  }));
  console.log('PASS opening viewport: fills without scrolling, stops when filled, error stop, three-attempt cap, user-scroll handoff, no unnecessary loads, sentinel restored');
 }finally{await browser.close();}
-

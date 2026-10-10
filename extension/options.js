@@ -91,7 +91,3 @@ await load();
 function batchStatus(value) { $('batch-status').textContent = value?.installed ? '首页已接入' : '等待支持的首页'; }
 batchStatus((await chrome.storage.session.get('feedBridge')).feedBridge);
 chrome.storage.onChanged.addListener((changes,area) => { if (area === 'session' && changes.feedBridge) batchStatus(changes.feedBridge.newValue); });
-
-
-
-
